@@ -5,10 +5,12 @@
 # Compiler Flags
 CC = gcc
 CCFLAGS += -Wall -Werror -Wextra
-LDFLAGS =
+LDFLAGS = -framework OpenGL -framework GLUT
 
-chip8.o: chip8.c
-	$(CC) $(CCFLAGS) chip8.c -o chip8 $(LDFLAGS)
+all: play
+
+play: chip8.c play.c
+	$(CC) $(CCFLAGS) chip8.c play.c -o play $(LDFLAGS)
 
 clean:
-	rm chip8
+	rm play

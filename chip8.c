@@ -5,29 +5,45 @@
  */
 #include "chip8.h"
 
-#define true  1
-#define false 0
-#define bool  int
-
 #define unknown_opcode(op) fprintf(stderr, "Unknown opcode: 0x%x\n", op)
 #define IS_BIT_SET(byte, bit) (((0x80 >> (bit)) & (byte)) != 0x0)
 #define GFX_INDEX(row, col) ((row) + (col)*GFX_COLS)
 
-uint16_t opcode;
-uint8_t  memory[MEM_SIZE];
-uint8_t  V[16];
-uint16_t I;
-uint16_t PC;
-uint8_t  gfx[GFX_SIZE];
-uint8_t  delay_timer;
-uint8_t  sound_timer;
-uint16_t stack[STACK_SIZE];
-uint16_t SP;
-uint8_t  key[KEY_SIZE];
-bool     draw_flag;
+unsigned char chip8_fontset[80] = 
+{ 
+    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+    0x20, 0x60, 0x20, 0x20, 0x70, // 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0x80  // F 
+};
 
+/* private */
+static uint16_t opcode;
+static uint8_t  memory[MEM_SIZE];
+static uint8_t  V[16];
+static uint16_t I;
+static uint16_t PC;
+static uint8_t  gfx[GFX_SIZE];
+static uint8_t  delay_timer;
+static uint8_t  sound_timer;
+static uint16_t stack[STACK_SIZE];
+static uint16_t SP;
+static uint8_t  key[KEY_SIZE];
 
-int main(void) { return 0; }
+/* public */
+bool chip8_draw_flag;
 
 static inline uint8_t randbyte() { return (uint8_t) rand(); }
 
@@ -48,7 +64,7 @@ void chip8_initialize() {
         memory[0x50 + i] = chip8_fontset[i];
     }
     
-    draw_flag   = false;    
+    chip8_draw_flag   = false;    
     delay_timer = 0;
     sound_timer = 0;
     srand(time(NULL));
@@ -197,7 +213,7 @@ void chip8_emulatecycle() {
                 }
             }
             PC += 2;
-            draw_flag = true;
+            chip8_draw_flag = true;
             break;
         case 0xE000: // key-pressed events
             switch (kk) {
@@ -218,8 +234,7 @@ void chip8_emulatecycle() {
                     PC += 2;
                     break;
                 case 0x0A:
-                    while (!key[V[x]]) ; // FIXME maybe?
-                    PC += 2;
+                    if (key[V[x]]) PC += 2;
                     break;
                 case 0x15:
                     delay_timer = V[x];
