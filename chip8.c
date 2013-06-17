@@ -83,8 +83,6 @@ static void print_state() {
     printf("\n");
 }
 
-uint8_t *chip8_get_gfx() { return gfx; }
-
 void chip8_initialize() {
     int i;
 
@@ -331,8 +329,8 @@ void chip8_emulatecycle() {
     }
 
 #ifdef DEBUG
-    if (chip8_draw_flag) debug_draw();
-    print_state();
+    if (true || chip8_draw_flag) debug_draw();
+    //print_state();
 #endif
 
 }

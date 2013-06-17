@@ -1,7 +1,7 @@
 # Compiler Flags
 CC = gcc
 CCFLAGS += -Wall -Wextra
-LDFLAGS = -framework OpenGL -framework GLUT
+LDFLAGS = -lGL -lglut
 
 all: play
 
