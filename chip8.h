@@ -19,13 +19,13 @@
 #define MEM_SIZE 4096
 #define GFX_ROWS 32
 #define GFX_COLS 64
-#define GFX_SIZE 2048
+#define GFX_SIZE (GFX_ROWS * GFX_COLS)
 #define STACK_SIZE 16
 #define KEY_SIZE 16
 
 #define GFX_INDEX(row, col) ((row)*GFX_COLS + (col))
 
-#define MAX_GAME_SIZE (0xFFF - 0x200)
+#define MAX_GAME_SIZE (0x1000 - 0x200)
 
 void chip8_initialize();
 void chip8_loadgame(char *game);

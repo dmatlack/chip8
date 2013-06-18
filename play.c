@@ -22,6 +22,7 @@ extern bool chip8_draw_flag;
 
 void gfx_setup() {
     memset(screen, BLACK, sizeof(unsigned char) * SCREEN_ROWS * SCREEN_COLS * 3);
+    glClear(GL_COLOR_BUFFER_BIT);
 }
 
 inline void paint_pixel(int row, int col, unsigned char color) {
@@ -94,6 +95,8 @@ int main(int argc, char **argv) {
     glutDisplayFunc(loop);
     glutIdleFunc(loop);
     glutReshapeFunc(reshape_window);
+
+    gfx_setup();
  
     // Run the emulator
     glutMainLoop();  

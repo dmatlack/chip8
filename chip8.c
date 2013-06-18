@@ -14,9 +14,16 @@
         exit(42); \
     } while (0)
 
+
+#ifdef DEBUG
+#define p(...) printf(__VA_ARGS__);
+#else
+#define p(...)
+#endif
+
 #define IS_BIT_SET(byte, bit) (((0x80 >> (bit)) & (byte)) != 0x0)
 
-#define FONTSET_ADDRESS 0x50
+#define FONTSET_ADDRESS 0x00
 #define FONTSET_BYTES_PER_CHAR 5
 unsigned char chip8_fontset[80] = 
 { 
@@ -161,9 +168,9 @@ void chip8_emulatecycle() {
     opcode = memory[PC] << 8 | memory[PC + 1];
     x   = (opcode >> 8) & 0x000F; // the lower 4 bits of the high byte
     y   = (opcode >> 4) & 0x000F; // the upper 4 bits of the low byte
-    n   = (opcode >> 0) & 0x000F; // the lowest 4 bits
-    kk  = (opcode >> 0) & 0x00FF; // the lowest 8 bits
-    nnn = (opcode >> 0) & 0x0FFF; // the lowest 12 bits
+    n   = opcode & 0x000F; // the lowest 4 bits
+    kk  = opcode & 0x00FF; // the lowest 8 bits
+    nnn = opcode & 0x0FFF; // the lowest 12 bits
 
 #ifdef DEBUG 
     printf("PC: 0x%04x Op: 0x%04x\n", PC, opcode);
@@ -174,73 +181,91 @@ void chip8_emulatecycle() {
         case 0x0000:
             switch (kk) {
                 case 0x00E0: // clear the screen
-                    memset(gfx, 0, GFX_SIZE);
+                    p("Clear the screen\n");
+                    memset(gfx, 0, sizeof(uint8_t) * GFX_SIZE);
                     chip8_draw_flag = true;
                     PC += 2;
                     break;
                 case 0x00EE: // ret
-                    PC = stack[SP--];
+                    p("ret\n");
+                    PC = stack[--SP];
                     break;
                 default:
                     unknown_opcode(opcode);
             }
             break;
         case 0x1000: // 1nnn: jump to address nnn
+            p("Jump to address 0x%x\n", nnn);
             PC = nnn;
             break;
         case 0x2000: // 2nnn: call address nnn
-            stack[++SP] = PC;
+            p("Call address 0x%x\n", nnn);
+            stack[SP++] = PC + 2;
             PC = nnn;
             break;
         case 0x3000: // 3xkk: skip next instr if V[x] = kk
+            p("Skip next instruction if 0x%x == 0x%x\n", V[x], kk);
             PC += (V[x] == kk) ? 4 : 2;
             break;
         case 0x4000: // 4xkk: skip next instr if V[x] != kk
+            p("Skip next instruction if 0x%x != 0x%x\n", V[x], kk);
             PC += (V[x] != kk) ? 4 : 2;
             break;
         case 0x5000: // 5xy0: skip next instr if V[x] == V[y]
+            p("Skip next instruction if 0x%x == 0x%x\n", V[x], V[y]);
             PC += (V[x] == V[y]) ? 4 : 2;
             break;
         case 0x6000: // 6xkk: set V[x] = kk
+            p("Set V[0x%x] to 0x%x\n", x, kk);
             V[x] = kk;
             PC += 2;
             break;
         case 0x7000: // 7xkk: set V[x] = V[x] + kk
+            p("Set V[0x%d] to V[0x%d] + 0x%x\n", x, x, kk);
             V[x] += kk;
             PC += 2;
             break;
         case 0x8000: // 8xyn: Arithmetic stuff
             switch (n) {
                 case 0x0:
+                    p("V[0x%x] = V[0x%x] = 0x%x\n", x, y, V[y]);
                     V[x] = V[y];
                     break;
                 case 0x1:
+                    p("V[0x%x] |= V[0x%x] = 0x%x\n", x, y, V[y]);
                     V[x] = V[x] | V[y];
                     break;
                 case 0x2:
+                    p("V[0x%x] &= V[0x%x] = 0x%x\n", x, y, V[y]);
                     V[x] = V[x] & V[y];
                     break;
                 case 0x3:
+                    p("V[0x%x] ^= V[0x%x] = 0x%x\n", x, y, V[y]);
                     V[x] = V[x] ^ V[y];
                     break;
                 case 0x4:
-                    V[0xF] = ((V[x] + V[y]) > 255) ? 1 : 0;
+                    p("V[0x%x] = V[0x%x] + V[0x%x] = 0x%x + 0x%x\n", x, x, y, V[x], V[y]);
+                    V[0xF] = ((int) V[x] + (int) V[y]) > 255 ? 1 : 0;
                     V[x] = V[x] + V[y];
                     break;
                 case 0x5: 
+                    p("V[0x%x] = V[0x%x] - V[0x%x] = 0x%x - 0x%x\n", x, x, y, V[x], V[y]);
                     V[0xF] = (V[x] > V[y]) ? 1 : 0;
                     V[x] = V[x] - V[y];
                     break;
                 case 0x6:
-                    V[0xF] = (V[x] % 2 == 1) ? 1 : 0;
+                    p("V[0x%x] = V[0x%x] >> 1 = 0x%x >> 1\n", x, x, V[x]);
+                    V[0xF] = V[x] & 0x1;
                     V[x] = (V[x] >> 1);
                     break;
                 case 0x7:
+                    p("V[0x%x] = V[0x%x] - V[0x%x] = 0x%x - 0x%x\n", x, y, x, V[y], V[x]);
                     V[0xF] = (V[y] > V[x]) ? 1 : 0;
                     V[x] = V[y] - V[x];
                     break;
                 case 0xE:
-                    V[0xF] = ((V[x] >> 7) % 2 == 1) ? 1 : 0;
+                    p("V[0x%x] = V[0x%x] << 1 = 0x%x << 1\n", x, x, V[x]);
+                    V[0xF] = (V[x] >> 7) & 0x1;
                     V[x] = (V[x] << 1);
                     break;
                 default:
@@ -251,6 +276,7 @@ void chip8_emulatecycle() {
         case 0x9000: // 9xy0: skip instruction if Vx != Vy
             switch (n) {
                 case 0x0:
+                    p("Skip next instruction if 0x%x != 0x%x\n", V[x], V[y]);
                     PC += (V[x] != V[y]) ? 4 : 2;
                     break;
                 default:
@@ -258,18 +284,23 @@ void chip8_emulatecycle() {
             }
             break;
         case 0xA000: // Annn: set I to address nnn
+            p("Set I to 0x%x\n", nnn);
             I = nnn;
             PC += 2;
             break;
         case 0xB000: // Bnnn: jump to location nnn + V[0]
+            p("Jump to 0x%x + V[0] (0x%x)\n", nnn, V[0]);
             PC = nnn + V[0];
             break;
         case 0xC000: // Cxkk: V[x] = random byte AND kk
+            printf("V[0x%x] = random byte\n", x);
             V[x] = randbyte() & kk;
             PC += 2;
             break;
         case 0xD000: // Dxyn: Display an n-byte sprite starting at memory
                      // location I at (Vx, Vy) on the screen, VF = collision
+            p("Draw sprite at (V[0x%x], V[0x%x]) = (0x%x, 0x%x) of height %d", 
+               x, y, V[x], V[y], n);
             draw_sprite(V[x], V[y], n);
             PC += 2;
             chip8_draw_flag = true;
@@ -277,9 +308,11 @@ void chip8_emulatecycle() {
         case 0xE000: // key-pressed events
             switch (kk) {
                 case 0x9E: // skip next instr if key[Vx] is pressed
+                    p("Skip next instruction if key[%d] is pressed\n", x); while(1);
                     PC += (key[V[x]]) ? 4 : 2;
                     break;
                 case 0xA1: // skip next instr if key[Vx] is not pressed
+                    p("Skip next instruction if key[%d] is NOT pressed\n", x); while(1);
                     PC += (!key[V[x]]) ? 4 : 2;
                     break;
                 default:
@@ -289,11 +322,13 @@ void chip8_emulatecycle() {
         case 0xF000: // misc
             switch (kk) {
                 case 0x07:
+                    p("V[0x%x] = delay timer = %d\n", x, delay_timer);
                     V[x] = delay_timer;
                     PC += 2;
                     break;
                 case 0x0A:
                     i = 0;
+                    printf("Wait for key instruction\n"); while(1);
                     while (true) {
                         for (i = 0; i < KEY_SIZE; i++) {
                             if (key[i]) {
@@ -306,33 +341,41 @@ void chip8_emulatecycle() {
                     PC += 2;
                     break;
                 case 0x15:
+                    p("delay timer = V[0x%x] = %d\n", x, V[x]);
                     delay_timer = V[x];
                     PC += 2;
                     break;
                 case 0x18:
+                    p("sound timer = V[0x%x] = %d\n", x, V[x]);
                     sound_timer = V[x];
                     PC += 2;
                     break;
                 case 0x1E:
+                    p("I = I + V[0x%x] = 0x%x + 0x%x\n", x, I, V[x]);
+                    V[0xF] = (I + V[x] > 0xfff) ? 1 : 0;
                     I = I + V[x];
                     PC += 2;
                     break;
                 case 0x29:
+                    p("I = location of font for character V[0x%x] = 0x%x\n", x, V[x]);
                     I = FONTSET_BYTES_PER_CHAR * V[x];
                     PC += 2;
                     break;
                 case 0x33:
+                    p("Store BCD for %d starting at address 0x%x\n", V[x], I);
                     memory[I]   = (V[x] % 1000) / 100; // hundred's digit
                     memory[I+1] = (V[x] % 100) / 10;   // ten's digit
                     memory[I+2] = (V[x] % 10);         // one's digit
                     PC += 2;
                     break;
                 case 0x55:
+                    p("Copy sprite from registers 0 to 0x%x into memory at address 0x%x\n", x, I);
                     for (i = 0; i <= x; i++) { memory[I + i] = V[i]; }
                     I += x + 1;
                     PC += 2;
                     break;
                 case 0x65:
+                    p("Copy sprite from memory at address 0x%x into registers 0 to 0x%x\n", x, I);
                     for (i = 0; i <= x; i++) { V[i] = memory[I + i]; }
                     I += x + 1;
                     PC += 2;
@@ -358,7 +401,7 @@ void chip8_emulatecycle() {
 
 #ifdef DEBUG
     //if (chip8_draw_flag) debug_draw();
-    //print_state();
+    print_state();
 #endif
 
 }
