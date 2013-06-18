@@ -17,7 +17,7 @@
 #define SCREEN_COLS (GFX_COLS * PIXEL_SIZE)
 unsigned char screen[SCREEN_ROWS][SCREEN_COLS][3];
 
-extern uint8_t gfx[GFX_SIZE];
+extern uint8_t gfx[GFX_ROWS][GFX_COLS];
 extern bool chip8_draw_flag;
 
 void gfx_setup() {
@@ -41,7 +41,7 @@ void paint_cell(int row, int col, unsigned char color) {
 }
 
 void loop() {
-    int x, y;
+    int row, col;
 
     chip8_emulatecycle();
 
@@ -50,9 +50,9 @@ void loop() {
         glClear(GL_COLOR_BUFFER_BIT);
      
         // Draw pixels to the buffer
-        for (y = 0; y < GFX_ROWS; y++) {
-            for (x = 0; x < GFX_COLS; x++) {
-                paint_cell(y, x, gfx[GFX_INDEX(y,x)] ? WHITE : BLACK);
+        for (row = 0; row < GFX_ROWS; row++) {
+            for (col = 0; col < GFX_COLS; col++) {
+                paint_cell(row, col, gfx[row][col] ? WHITE : BLACK);
             }
         }
 
@@ -66,9 +66,11 @@ void loop() {
 }
 
 void reshape_window(GLsizei w, GLsizei h) {
+    (void) w; (void) h;
 }
 
 int main(int argc, char **argv) {
+
     if (argc != 2) {
         fprintf(stderr, "Usage: ./play <game>\n");
         exit(2);

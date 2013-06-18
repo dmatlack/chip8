@@ -16,6 +16,8 @@
 
 #define IS_BIT_SET(byte, bit) (((0x80 >> (bit)) & (byte)) != 0x0)
 
+#define FONTSET_ADDRESS 0x50
+#define FONTSET_BYTES_PER_CHAR 5
 unsigned char chip8_fontset[80] = 
 { 
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -41,7 +43,7 @@ uint8_t  memory[MEM_SIZE];
 uint8_t  V[16];
 uint16_t I;
 uint16_t PC;
-uint8_t  gfx[GFX_SIZE];
+uint8_t  gfx[GFX_ROWS][GFX_COLS];
 uint8_t  delay_timer;
 uint8_t  sound_timer;
 uint16_t stack[STACK_SIZE];
@@ -49,14 +51,41 @@ uint16_t SP;
 uint8_t  key[KEY_SIZE];
 bool     chip8_draw_flag;
 
-static inline uint8_t randbyte() { return (uint8_t) rand(); }
+static inline uint8_t randbyte() { return (rand() % 256); }
+
+void draw_sprite(uint8_t x, uint8_t y, uint8_t n) {
+    unsigned row = y, col = x;
+    unsigned byte_index;
+    unsigned bit_index;
+
+    // set the collision flag to 0
+    V[0xF] = 0;
+    for (byte_index = 0; byte_index < n; byte_index++) {
+        uint8_t byte = memory[I + byte_index];
+
+        for (bit_index = 0; bit_index < 8; bit_index++) {
+            // the value of the bit in the sprite
+            uint8_t bit = (byte >> bit_index) & 0xF;
+            // the value of the current pixel on the screen
+            uint8_t *pixelp = &gfx[(row + byte_index) % GFX_ROWS]
+                                  [(col + (7 - bit_index)) % GFX_COLS];
+
+            // if drawing to the screen would cause any pixel to be erased,
+            // set the collision flag to 1
+            if (bit == 1 && *pixelp ==1) V[0xF] = 1;
+
+            // draw this pixel by XOR
+            *pixelp = *pixelp ^ bit;
+        }
+    }
+}
 
 static void debug_draw() {
     int x, y;
 
     for (y = 0; y < GFX_ROWS; y++) {
         for (x = 0; x < GFX_COLS; x++) {
-            if (gfx[GFX_INDEX(y,x)] == 0) printf("0");
+            if (gfx[y][x] == 0) printf("0");
             else printf(" ");
         }
         printf("\n");
@@ -91,13 +120,14 @@ void chip8_initialize() {
     I      = 0;
     SP     = 0;
 
-    memset(memory, 0, MEM_SIZE);
-    memset(V,      0, 16);
-    memset(gfx,    0, GFX_SIZE);
-    memset(stack,  0, STACK_SIZE);
+    memset(memory, 0, sizeof(uint8_t)  * MEM_SIZE);
+    memset(V,      0, sizeof(uint8_t)  * 16);
+    memset(gfx,    0, sizeof(uint8_t)  * GFX_SIZE);
+    memset(stack,  0, sizeof(uint16_t) * STACK_SIZE);
+    memset(key,    0, sizeof(uint8_t)  * KEY_SIZE);
 
     for (i = 0; i < 80; i++) {
-        memory[0x50 + i] = chip8_fontset[i];
+        memory[FONTSET_ADDRESS + i] = chip8_fontset[i];
     }
     
     chip8_draw_flag = true; 
@@ -122,24 +152,24 @@ void chip8_loadgame(char *game) {
 }
 
 void chip8_emulatecycle() {
-    int i, j;
+    int i;
     uint8_t x, y, n;
-    uint8_t kk, byte;
+    uint8_t kk;
     uint16_t nnn;
 
     // fetch
     opcode = memory[PC] << 8 | memory[PC + 1];
-    x   = (opcode >> 8) & 0x000F;
-    y   = (opcode >> 4) & 0x000F;
-    n   = (opcode >> 0) & 0x000F;
-    kk  = (opcode >> 0) & 0x00FF;
-    nnn = (opcode >> 0) & 0x0FFF; 
+    x   = (opcode >> 8) & 0x000F; // the lower 4 bits of the high byte
+    y   = (opcode >> 4) & 0x000F; // the upper 4 bits of the low byte
+    n   = (opcode >> 0) & 0x000F; // the lowest 4 bits
+    kk  = (opcode >> 0) & 0x00FF; // the lowest 8 bits
+    nnn = (opcode >> 0) & 0x0FFF; // the lowest 12 bits
 
 #ifdef DEBUG 
-    printf("Op: 0x%04x\n", opcode);
+    printf("PC: 0x%04x Op: 0x%04x\n", PC, opcode);
 #endif
 
-    // decode & execute
+    // decode & execute: case on the highest order byte
     switch (opcode & 0xF000) {
         case 0x0000:
             switch (kk) {
@@ -149,15 +179,17 @@ void chip8_emulatecycle() {
                     PC += 2;
                     break;
                 case 0x00EE: // ret
-                    PC = stack[--SP];
+                    PC = stack[SP--];
                     break;
+                default:
+                    unknown_opcode(opcode);
             }
             break;
         case 0x1000: // 1nnn: jump to address nnn
             PC = nnn;
             break;
         case 0x2000: // 2nnn: call address nnn
-            stack[SP++] = PC;
+            stack[++SP] = PC;
             PC = nnn;
             break;
         case 0x3000: // 3xkk: skip next instr if V[x] = kk
@@ -179,7 +211,7 @@ void chip8_emulatecycle() {
             break;
         case 0x8000: // 8xyn: Arithmetic stuff
             switch (n) {
-                case 0x0: 
+                case 0x0:
                     V[x] = V[y];
                     break;
                 case 0x1:
@@ -192,24 +224,24 @@ void chip8_emulatecycle() {
                     V[x] = V[x] ^ V[y];
                     break;
                 case 0x4:
-                    V[x] = V[x] + V[y];
                     V[0xF] = ((V[x] + V[y]) > 255) ? 1 : 0;
+                    V[x] = V[x] + V[y];
                     break;
                 case 0x5: 
-                    V[x] = V[x] - V[y];
                     V[0xF] = (V[x] > V[y]) ? 1 : 0;
+                    V[x] = V[x] - V[y];
                     break;
                 case 0x6:
-                    V[x] = V[x] / 2;
                     V[0xF] = (V[x] % 2 == 1) ? 1 : 0;
+                    V[x] = (V[x] >> 1);
                     break;
                 case 0x7:
-                    V[x] = V[y] - V[x];
                     V[0xF] = (V[y] > V[x]) ? 1 : 0;
+                    V[x] = V[y] - V[x];
                     break;
                 case 0xE:
-                    V[x] *= 2;
                     V[0xF] = ((V[x] >> 7) % 2 == 1) ? 1 : 0;
+                    V[x] = (V[x] << 1);
                     break;
                 default:
                     unknown_opcode(opcode);
@@ -238,16 +270,7 @@ void chip8_emulatecycle() {
             break;
         case 0xD000: // Dxyn: Display an n-byte sprite starting at memory
                      // location I at (Vx, Vy) on the screen, VF = collision
-            V[0xF] = 0;
-            for (i = 0; i < n; i++) {
-                byte = memory[I + i];
-                for (j = 0; j < 8; j++) {
-                    if (IS_BIT_SET(byte, j)) {
-                        if (gfx[GFX_INDEX(x+j, y+i)] == 0) { V[0xF] = 1; }
-                        gfx[GFX_INDEX(x+j, y+i)] ^= 1;
-                    }     
-                }
-            }
+            draw_sprite(V[x], V[y], n);
             PC += 2;
             chip8_draw_flag = true;
             break;
@@ -270,12 +293,17 @@ void chip8_emulatecycle() {
                     PC += 2;
                     break;
                 case 0x0A:
-                    for (i = 0; i < 16; i++) {
-                        if (key[i]) {
-                            V[x] = i;
-                            PC += 2;
+                    i = 0;
+                    while (true) {
+                        for (i = 0; i < KEY_SIZE; i++) {
+                            if (key[i]) {
+                                V[x] = i;
+                                goto got_key_press;
+                            }
                         }
                     }
+                    got_key_press:
+                    PC += 2;
                     break;
                 case 0x15:
                     delay_timer = V[x];
@@ -290,22 +318,22 @@ void chip8_emulatecycle() {
                     PC += 2;
                     break;
                 case 0x29:
-                    I = 0x5 * V[x]; // FIXME maybe?
+                    I = FONTSET_BYTES_PER_CHAR * V[x];
                     PC += 2;
                     break;
                 case 0x33:
-                    memory[I]   = (V[x] % 1000) / 100;
-                    memory[I+1] = (V[x] % 100) / 10;
-                    memory[I+2] = (V[x] % 10);
+                    memory[I]   = (V[x] % 1000) / 100; // hundred's digit
+                    memory[I+1] = (V[x] % 100) / 10;   // ten's digit
+                    memory[I+2] = (V[x] % 10);         // one's digit
                     PC += 2;
                     break;
                 case 0x55:
-                    for (i = 0; i < x; i++) { memory[I + i] = V[i]; }
+                    for (i = 0; i <= x; i++) { memory[I + i] = V[i]; }
                     I += x + 1;
                     PC += 2;
                     break;
                 case 0x65:
-                    for (i = 0; i < x; i++) { V[i] = memory[I + i]; }
+                    for (i = 0; i <= x; i++) { V[i] = memory[I + i]; }
                     I += x + 1;
                     PC += 2;
                     break;
@@ -329,7 +357,7 @@ void chip8_emulatecycle() {
     }
 
 #ifdef DEBUG
-    if (true || chip8_draw_flag) debug_draw();
+    //if (true || chip8_draw_flag) debug_draw();
     //print_state();
 #endif
 
