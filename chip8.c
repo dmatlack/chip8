@@ -65,7 +65,7 @@ void draw_sprite(uint8_t x, uint8_t y, uint8_t n) {
 
         for (bit_index = 0; bit_index < 8; bit_index++) {
             // the value of the bit in the sprite
-            uint8_t bit = (byte >> bit_index) & 0xF;
+            uint8_t bit = (byte >> bit_index) & 0x1;
             // the value of the current pixel on the screen
             uint8_t *pixelp = &gfx[(row + byte_index) % GFX_ROWS]
                                   [(col + (7 - bit_index)) % GFX_COLS];
@@ -357,7 +357,7 @@ void chip8_emulatecycle() {
     }
 
 #ifdef DEBUG
-    //if (true || chip8_draw_flag) debug_draw();
+    //if (chip8_draw_flag) debug_draw();
     //print_state();
 #endif
 

@@ -25,6 +25,7 @@ void gfx_setup() {
 }
 
 inline void paint_pixel(int row, int col, unsigned char color) {
+    row = SCREEN_ROWS - 1 - row;
     screen[row][col][0] = screen[row][col][1] = screen[row][col][2] = color;
 }
 
@@ -45,7 +46,9 @@ void loop() {
 
     chip8_emulatecycle();
 
-    if (true || chip8_draw_flag) {
+    //memset(gfx, 0, sizeof(uint8_t)  * GFX_SIZE);
+
+    if (chip8_draw_flag) {
         // Clear framebuffer
         glClear(GL_COLOR_BUFFER_BIT);
      
