@@ -5,8 +5,6 @@
  */
 #include "chip8.h"
 
-#define DEBUG
-
 #define unknown_opcode(op) \
     do { \
         fprintf(stderr, "Unknown opcode: 0x%x\n", op); \
@@ -308,11 +306,11 @@ void chip8_emulatecycle() {
         case 0xE000: // key-pressed events
             switch (kk) {
                 case 0x9E: // skip next instr if key[Vx] is pressed
-                    p("Skip next instruction if key[%d] is pressed\n", x); while(1);
+                    p("Skip next instruction if key[%d] is pressed\n", x);
                     PC += (key[V[x]]) ? 4 : 2;
                     break;
                 case 0xA1: // skip next instr if key[Vx] is not pressed
-                    p("Skip next instruction if key[%d] is NOT pressed\n", x); while(1);
+                    p("Skip next instruction if key[%d] is NOT pressed\n", x);
                     PC += (!key[V[x]]) ? 4 : 2;
                     break;
                 default:
@@ -328,7 +326,7 @@ void chip8_emulatecycle() {
                     break;
                 case 0x0A:
                     i = 0;
-                    printf("Wait for key instruction\n"); while(1);
+                    printf("Wait for key instruction\n");
                     while (true) {
                         for (i = 0; i < KEY_SIZE; i++) {
                             if (key[i]) {

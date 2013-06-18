@@ -17,12 +17,35 @@
 #define SCREEN_COLS (GFX_COLS * PIXEL_SIZE)
 unsigned char screen[SCREEN_ROWS][SCREEN_COLS][3];
 
+extern uint8_t key[KEY_SIZE];
 extern uint8_t gfx[GFX_ROWS][GFX_COLS];
 extern bool chip8_draw_flag;
 
 void gfx_setup() {
     memset(screen, BLACK, sizeof(unsigned char) * SCREEN_ROWS * SCREEN_COLS * 3);
     glClear(GL_COLOR_BUFFER_BIT);
+}
+
+void keypress(unsigned char k, int x, int y) {
+    printf("Key Press: %c, %d, %d\n", k, x, y);
+    switch (k) {
+        case '1': key[0x1] = 1; break;
+        case '2': key[0x2] = 1; break;
+        case '3': key[0x3] = 1; break;
+        case '4': key[0xC] = 1; break;
+        case 'q': key[0x4] = 1; break;
+        case 'w': key[0x5] = 1; break;
+        case 'e': key[0x6] = 1; break;
+        case 'r': key[0xD] = 1; break;
+        case 'a': key[0x7] = 1; break;
+        case 's': key[0x8] = 1; break;
+        case 'd': key[0x9] = 1; break;
+        case 'f': key[0xE] = 1; break;
+        case 'z': key[0xA] = 1; break;
+        case 'x': key[0x0] = 1; break;
+        case 'c': key[0xB] = 1; break;
+        case 'v': key[0xF] = 1; break;
+    }
 }
 
 inline void paint_pixel(int row, int col, unsigned char color) {
@@ -95,6 +118,7 @@ int main(int argc, char **argv) {
     glutDisplayFunc(loop);
     glutIdleFunc(loop);
     glutReshapeFunc(reshape_window);
+    glutKeyboardFunc(keypress);
 
     gfx_setup();
  
