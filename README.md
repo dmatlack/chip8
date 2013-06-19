@@ -1,7 +1,7 @@
 Chip8 Emulator
 ==============
 
-Currently working except for sound and keypress events.
+Currently working except for sound.
 
 Here's some screenshots of the emulator:
 
@@ -9,5 +9,8 @@ Here's some screenshots of the emulator:
 
 
 ![space invaders](space_invaders.png)
+
+
+![pong](pong.png)
 
 Compiles on Linux. Depends on OpenGL and GLUT.
