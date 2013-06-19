@@ -31,5 +31,6 @@ void chip8_initialize();
 void chip8_loadgame(char *game);
 void chip8_emulatecycle();
 void chip8_setkeys();
+void chip8_tick();
 
 #endif /* __CHIP8_H__ */

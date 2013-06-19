@@ -291,7 +291,7 @@ void chip8_emulatecycle() {
             PC = nnn + V[0];
             break;
         case 0xC000: // Cxkk: V[x] = random byte AND kk
-            printf("V[0x%x] = random byte\n", x);
+            p("V[0x%x] = random byte\n", x);
             V[x] = randbyte() & kk;
             PC += 2;
             break;
@@ -386,6 +386,13 @@ void chip8_emulatecycle() {
             unknown_opcode(opcode);
     }
 
+#ifdef DEBUG
+    print_state();
+#endif
+
+}
+
+void chip8_tick() {
     // update timers
     if (delay_timer > 0) {
         --delay_timer;
@@ -396,10 +403,4 @@ void chip8_emulatecycle() {
             printf("BEEP!\n");
         }
     }
-
-#ifdef DEBUG
-    //if (chip8_draw_flag) debug_draw();
-    print_state();
-#endif
-
 }
