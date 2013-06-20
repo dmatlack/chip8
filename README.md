@@ -3,7 +3,11 @@ Chip8 Emulator
 
 Currently working except for sound.
 
-Here's some screenshots of the emulator:
+Compiles on Linux. Depends on OpenGL and GLUT.
+
+To build: `make`
+
+To run: `./play <path/to/rom>`
 
 ![logo](logo.png)
 
@@ -12,5 +16,3 @@ Here's some screenshots of the emulator:
 
 
 ![pong](pong.png)
-
-Compiles on Linux. Depends on OpenGL and GLUT.
