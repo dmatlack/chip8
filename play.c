@@ -5,8 +5,16 @@
  */
 #include "chip8.h"
 
+#if defined(__APPLE__)
+#include <OpenGL/gl.h>
+#include <OpenGL/glu.h>
+#include <GLUT/glut.h>
+#else
 #include <GL/gl.h>
+#include <GL/glu.h>
 #include <GL/glut.h>
+#endif
+
 #include <sys/time.h>
 
 #define PIXEL_SIZE 5
@@ -79,7 +87,7 @@ void keyrelease(unsigned char k, int x, int y) {
     if (index >= 0) { key[index] = 0; }
 }
 
-inline void paint_pixel(int row, int col, unsigned char color) {
+void paint_pixel(int row, int col, unsigned char color) {
     row = SCREEN_ROWS - 1 - row;
     screen[row][col][0] = screen[row][col][1] = screen[row][col][2] = color;
 }
