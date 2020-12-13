@@ -1,7 +1,12 @@
 # Compiler Flags
 CC = gcc
 CCFLAGS += -Wall -Wextra
+UNAME := $(shell uname)
+ifeq ($(UNAME), Darwin)
+LDFLAGS = -framework OpenGL -framework GLUT
+else
 LDFLAGS = -lGL -lglut
+endif
 
 all: play
 
